@@ -1,9 +1,16 @@
+import { Avatar, Backdrop, BottomNavigation, BottomNavigationAction, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
 import React, { useState, useEffect } from 'react';
+import AddShoppingCartRoundedIcon from '@mui/icons-material/AddShoppingCartRounded'
+import RemoveShoppingCartRoundedIcon from '@mui/icons-material/RemoveShoppingCartRounded';
+import AccountBoxRoundedIcon from '@mui/icons-material/AccountBoxRounded';
 
 const ProductList = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [navigation, setNavigation] = useState("products");
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderFinished, setOrderFinished] = useState(false)
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -38,10 +45,28 @@ const ProductList = () => {
       setSelectedProduct(selectedProduct);
     }
   };
+  const delay = ms => new Promise(
+    resolve => setTimeout(resolve, ms)
+  );
 
-  const handleOrderSubmit = () => {
+  const handleOrderSubmit = async () => {
     // Qui puoi implementare la logica per inviare l'ordine, ad esempio a un server
     console.log('Ordine inviato:', selectedProduct);
+    setOrderLoading(true)
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productName: selectedProduct.productName,
+        type: "TECH",
+        price: selectedProduct.price,
+        userName: "guido"
+      })
+    }
+    await fetch('https://localhost:7106/Orders', requestOptions);
+    await delay(2000);
+    setOrderLoading(false);
+    setOrderFinished(true);
   };
 
   if (loading) {
@@ -53,23 +78,97 @@ const ProductList = () => {
   }
 
   return (
-    <div>
-      <h2>Lista Prodotti</h2>
-      <ul>
-        {products.map((product) => (
-          <li key={product.productCode}>
-            {product.type} - {product.productName} - {product.price} €{' '}
-            <button onClick={() => handleProductSelect(product.productCode)}>
-              {selectedProduct != null && selectedProduct.productCode === product.productCode ? 'Rimuovi dal carrello' : 'Aggiungi al carrello'}
-            </button>
-          </li>
-        ))}
-      </ul>
+    navigation === "products" ?
+      <div>
+        <Backdrop
+          sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={orderLoading}
 
-      <h2>Carrello</h2>
-          {selectedProduct != null ? <p>{selectedProduct.productName} - {selectedProduct.price} € </p> : null}
-      <button onClick={handleOrderSubmit}>Invia Ordine</button>
-    </div>
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
+
+        <Dialog
+          open={orderFinished}
+          keepMounted
+          onClose={() => { setOrderFinished(false); setSelectedProduct(null) }}
+          aria-describedby="alert-dialog-slide-description"
+        >
+          <DialogTitle>{"Ordine inviato"}</DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-slide-description">
+              Ordine inviato correttamente!
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => { setOrderFinished(false); setSelectedProduct(null) }}>Chiudi</Button>
+          </DialogActions>
+        </Dialog>
+        <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center', justifyContent: 'center', alignItems: 'center', justifyItems: 'center', textAlign: 'center' }}>
+          <Typography variant='h4'>Prodotti</Typography>
+          <List sx={{ color: 'white', width: '20%', alignSelf: 'center', alignContent: 'center', justifyContent: 'center', alignItems: 'center', justifyItems: 'center', textAlign: 'center' }}>
+            {products.map((product) => (
+              <div>
+                <ListItem style={{ color: 'white', borderRadius: 20, marginBottom: 10, backgroundColor: '#004b66', display: 'flex', justifyContent: 'center', justifyItems: 'center', alignContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      {selectedProduct != null && selectedProduct.productCode === product.productCode ?
+                        <IconButton onClick={() => handleProductSelect(product.productCode)} style={{ backgroundColor: 'white', color: 'black' }}>
+                          <RemoveShoppingCartRoundedIcon />
+                        </IconButton> :
+                        <IconButton onClick={() => handleProductSelect(product.productCode)} style={{ backgroundColor: 'white', color: 'black' }}>
+                          <AddShoppingCartRoundedIcon />
+                        </IconButton>
+                      }
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText style={{ color: 'white' }} secondaryTypographyProps={{ color: 'whitesmoke' }} primary={product.productName} secondary={product.price + " €"} />
+                </ListItem>
+              </div>
+            ))}
+          </List>
+
+
+          {selectedProduct != null ?
+            <div style={{ width: '30%', marginTop: 60 }}>
+              <Typography variant='h4'>Carrello</Typography>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#004b66', width: '100%', color: 'white', borderRadius: 50, margin: 10, padding: 20 }}>
+
+                <Typography variant='h5'>{selectedProduct.productName}</Typography>
+                <Typography variant='h7'> {selectedProduct.price} € </Typography>
+                <Button variant='outlined' style={{ width: '50%', color: 'white', borderColor: 'white', borderRadius: 50, marginTop: 10 }} onClick={handleOrderSubmit}>Invia Ordine</Button>
+              </div>
+            </div>
+            : null}
+
+        </div>
+        <Box sx={{ width: '100%', position: 'fixed', bottom: 1 }}>
+          <BottomNavigation
+            showLabels
+            value={navigation}
+            onChange={(event, newValue) => {
+              setNavigation(newValue);
+            }}
+          >
+            <BottomNavigationAction value={"products"} label="Products" icon={<AddShoppingCartRoundedIcon />} />
+            <BottomNavigationAction value={"myorders"} label="My Orders" icon={<AccountBoxRoundedIcon />} />
+          </BottomNavigation>
+        </Box>
+      </div>
+      : <div>
+        <Box sx={{ width: '100%', position: 'fixed', bottom: 1 }}>
+          <BottomNavigation
+            showLabels
+            value={navigation}
+            onChange={(event, newValue) => {
+              setNavigation(newValue);
+            }}
+          >
+            <BottomNavigationAction value={"products"} label="Products" icon={<AddShoppingCartRoundedIcon />} />
+            <BottomNavigationAction value={"myorders"} label="My Orders" icon={<AccountBoxRoundedIcon />} />
+          </BottomNavigation>
+        </Box>
+      </div>
   );
 };
 
